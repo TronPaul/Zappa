@@ -19,7 +19,6 @@ import collections
 import hjson as json
 import inspect
 import imp
-import importlib
 import logging
 import os
 import pkg_resources
@@ -38,6 +37,12 @@ from datetime import datetime,timedelta
 from zappa import Zappa, logger, API_GATEWAY_REGIONS
 from util import (check_new_version_available, detect_django_settings,
                   detect_flask_apps, parse_s3_url)
+
+
+if sys.version_info[0] < 3:
+    import imp
+else:
+    import importlib
 
 
 CUSTOM_SETTINGS = [
@@ -1220,7 +1225,12 @@ class ZappaCLI(object):
         if callback:
             (mod_name, cb_func) = callback.rsplit('.', 1)
 
-            module_ = importlib.import_module(mod_name)
+            if sys.version_info[0] < 3:
+                (file_, pathname, desc) = imp.find_module(mod_name, sys.path + [os.getcwd()])
+                module_ = imp.load_module(mod_name, file_, pathname, desc)
+            else:
+                loader = importlib.find_loader(mod_name, sys.meta_path + [os.getcwd()])
+                module_ = loader.load_module(mod_name)
             getattr(module_, cb_func)(self)  # Call the function passing self
 
     def check_for_update(self):
